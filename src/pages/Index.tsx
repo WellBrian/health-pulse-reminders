@@ -9,10 +9,11 @@ import PatientManagement from "@/components/patients/PatientManagement";
 import ReminderScheduler from "@/components/reminders/ReminderScheduler";
 import AnalyticsDashboard from "@/components/analytics/AnalyticsDashboard";
 import ThemeSelector from "@/components/theme/ThemeSelector";
-import { Calendar, Users, Bell, BarChart3, Palette } from "lucide-react";
+import { Calendar, Users, Bell, BarChart3, Palette, LogIn, UserPlus } from "lucide-react";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [showThemeSelector, setShowThemeSelector] = useState(false);
   const { theme, themes } = useTheme();
   const currentTheme = themes[theme];
 
@@ -26,11 +27,41 @@ const Index = () => {
               <h1 className="text-4xl font-bold text-gray-900 mb-2">HealthPulse</h1>
               <p className="text-lg text-gray-600">Smart Healthcare Reminder System</p>
             </div>
-            <div className="flex items-center space-x-2">
-              <div className="h-3 w-3 bg-green-400 rounded-full animate-pulse"></div>
-              <span className="text-sm text-gray-600">System Active</span>
+            <div className="flex items-center space-x-4">
+              {/* Auth Buttons */}
+              <Button variant="outline" className="flex items-center space-x-2">
+                <LogIn className="h-4 w-4" />
+                <span>Login</span>
+              </Button>
+              <Button className="flex items-center space-x-2">
+                <UserPlus className="h-4 w-4" />
+                <span>Sign Up</span>
+              </Button>
+              
+              {/* Theme Toggle */}
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setShowThemeSelector(!showThemeSelector)}
+                className="relative"
+              >
+                <Palette className="h-4 w-4" />
+              </Button>
+              
+              {/* System Status */}
+              <div className="flex items-center space-x-2">
+                <div className="h-3 w-3 bg-green-400 rounded-full animate-pulse"></div>
+                <span className="text-sm text-gray-600">System Active</span>
+              </div>
             </div>
           </div>
+
+          {/* Theme Selector Dropdown */}
+          {showThemeSelector && (
+            <div className="absolute right-6 top-24 z-50 w-96">
+              <ThemeSelector />
+            </div>
+          )}
           
           {/* Quick Stats */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
@@ -78,7 +109,7 @@ const Index = () => {
 
         {/* Main Content */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className={`grid w-full grid-cols-5 ${currentTheme.colors.background} backdrop-blur-sm`}>
+          <TabsList className={`grid w-full grid-cols-4 ${currentTheme.colors.background} backdrop-blur-sm`}>
             <TabsTrigger value="dashboard" className="flex items-center space-x-2">
               <Calendar className="h-4 w-4" />
               <span>Dashboard</span>
@@ -94,10 +125,6 @@ const Index = () => {
             <TabsTrigger value="analytics" className="flex items-center space-x-2">
               <BarChart3 className="h-4 w-4" />
               <span>Analytics</span>
-            </TabsTrigger>
-            <TabsTrigger value="themes" className="flex items-center space-x-2">
-              <Palette className="h-4 w-4" />
-              <span>Themes</span>
             </TabsTrigger>
           </TabsList>
 
@@ -115,10 +142,6 @@ const Index = () => {
 
           <TabsContent value="analytics" className="space-y-6">
             <AnalyticsDashboard />
-          </TabsContent>
-
-          <TabsContent value="themes" className="space-y-6">
-            <ThemeSelector />
           </TabsContent>
         </Tabs>
       </div>
