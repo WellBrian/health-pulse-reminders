@@ -1,10 +1,13 @@
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useTheme } from "@/contexts/ThemeContext";
 import { Calendar, Users, Bell, ArrowRight } from "lucide-react";
 
 const DashboardOverview = () => {
+  const { theme, themes } = useTheme();
+  const currentTheme = themes[theme];
+
   const upcomingAppointments = [
     { id: 1, patient: "Sarah Johnson", time: "09:00 AM", type: "Consultation", status: "confirmed" },
     { id: 2, patient: "Michael Chen", time: "10:30 AM", type: "Follow-up", status: "pending" },
@@ -34,7 +37,7 @@ const DashboardOverview = () => {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* Today's Appointments */}
-      <Card className="bg-white/80 backdrop-blur-sm border-gray-200">
+      <Card className={`${currentTheme.colors.background} backdrop-blur-sm border-gray-200`}>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <div>
             <CardTitle className="text-xl font-semibold">Today's Appointments</CardTitle>
@@ -64,7 +67,7 @@ const DashboardOverview = () => {
       </Card>
 
       {/* Recent Reminder Activity */}
-      <Card className="bg-white/80 backdrop-blur-sm border-gray-200">
+      <Card className={`${currentTheme.colors.background} backdrop-blur-sm border-gray-200`}>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <div>
             <CardTitle className="text-xl font-semibold">Recent Reminders</CardTitle>
@@ -94,7 +97,7 @@ const DashboardOverview = () => {
       </Card>
 
       {/* Quick Actions */}
-      <Card className="bg-white/80 backdrop-blur-sm border-gray-200">
+      <Card className={`${currentTheme.colors.background} backdrop-blur-sm border-gray-200`}>
         <CardHeader>
           <CardTitle className="text-xl font-semibold">Quick Actions</CardTitle>
           <CardDescription>Common tasks and shortcuts</CardDescription>
@@ -116,7 +119,7 @@ const DashboardOverview = () => {
       </Card>
 
       {/* System Status */}
-      <Card className="bg-white/80 backdrop-blur-sm border-gray-200">
+      <Card className={`${currentTheme.colors.background} backdrop-blur-sm border-gray-200`}>
         <CardHeader>
           <CardTitle className="text-xl font-semibold">System Status</CardTitle>
           <CardDescription>Service health and performance</CardDescription>

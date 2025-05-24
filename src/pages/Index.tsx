@@ -3,17 +3,21 @@ import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useTheme } from "@/contexts/ThemeContext";
 import DashboardOverview from "@/components/dashboard/DashboardOverview";
 import PatientManagement from "@/components/patients/PatientManagement";
 import ReminderScheduler from "@/components/reminders/ReminderScheduler";
 import AnalyticsDashboard from "@/components/analytics/AnalyticsDashboard";
-import { Calendar, Users, Bell, BarChart3 } from "lucide-react";
+import ThemeSelector from "@/components/theme/ThemeSelector";
+import { Calendar, Users, Bell, BarChart3, Palette } from "lucide-react";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
+  const { theme, themes } = useTheme();
+  const currentTheme = themes[theme];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
+    <div className={`min-h-screen bg-gradient-to-br ${currentTheme.colors.primary}`}>
       <div className="container mx-auto p-6 max-w-7xl">
         {/* Header */}
         <div className="mb-8">
@@ -30,7 +34,7 @@ const Index = () => {
           
           {/* Quick Stats */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            <Card className="bg-white/70 backdrop-blur-sm border-blue-100">
+            <Card className={`${currentTheme.colors.background} backdrop-blur-sm ${currentTheme.colors.accent}`}>
               <CardContent className="p-4 flex items-center">
                 <Calendar className="h-8 w-8 text-blue-600 mr-3" />
                 <div>
@@ -40,7 +44,7 @@ const Index = () => {
               </CardContent>
             </Card>
             
-            <Card className="bg-white/70 backdrop-blur-sm border-green-100">
+            <Card className={`${currentTheme.colors.background} backdrop-blur-sm border-green-100`}>
               <CardContent className="p-4 flex items-center">
                 <Users className="h-8 w-8 text-green-600 mr-3" />
                 <div>
@@ -50,7 +54,7 @@ const Index = () => {
               </CardContent>
             </Card>
             
-            <Card className="bg-white/70 backdrop-blur-sm border-purple-100">
+            <Card className={`${currentTheme.colors.background} backdrop-blur-sm border-purple-100`}>
               <CardContent className="p-4 flex items-center">
                 <Bell className="h-8 w-8 text-purple-600 mr-3" />
                 <div>
@@ -60,7 +64,7 @@ const Index = () => {
               </CardContent>
             </Card>
             
-            <Card className="bg-white/70 backdrop-blur-sm border-orange-100">
+            <Card className={`${currentTheme.colors.background} backdrop-blur-sm border-orange-100`}>
               <CardContent className="p-4 flex items-center">
                 <BarChart3 className="h-8 w-8 text-orange-600 mr-3" />
                 <div>
@@ -74,7 +78,7 @@ const Index = () => {
 
         {/* Main Content */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 bg-white/70 backdrop-blur-sm">
+          <TabsList className={`grid w-full grid-cols-5 ${currentTheme.colors.background} backdrop-blur-sm`}>
             <TabsTrigger value="dashboard" className="flex items-center space-x-2">
               <Calendar className="h-4 w-4" />
               <span>Dashboard</span>
@@ -90,6 +94,10 @@ const Index = () => {
             <TabsTrigger value="analytics" className="flex items-center space-x-2">
               <BarChart3 className="h-4 w-4" />
               <span>Analytics</span>
+            </TabsTrigger>
+            <TabsTrigger value="themes" className="flex items-center space-x-2">
+              <Palette className="h-4 w-4" />
+              <span>Themes</span>
             </TabsTrigger>
           </TabsList>
 
@@ -107,6 +115,10 @@ const Index = () => {
 
           <TabsContent value="analytics" className="space-y-6">
             <AnalyticsDashboard />
+          </TabsContent>
+
+          <TabsContent value="themes" className="space-y-6">
+            <ThemeSelector />
           </TabsContent>
         </Tabs>
       </div>
