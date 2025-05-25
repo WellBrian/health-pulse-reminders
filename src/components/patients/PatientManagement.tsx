@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,65 +9,137 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Users, Search, Plus, Calendar, Bell } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
+
+interface Patient {
+  id: string;
+  name: string;
+  email?: string;
+  phone: string;
+  created_at: string;
+  updated_at: string;
+  date_of_birth?: string;
+  medical_record_number?: string;
+  clinic_id?: string;
+}
 
 const PatientManagement = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    date_of_birth: "",
+    notes: ""
+  });
 
-  const patients = [
-    {
-      id: 1,
-      name: "Sarah Johnson",
-      email: "sarah.johnson@email.com",
-      phone: "+1 (555) 123-4567",
-      lastVisit: "2024-01-15",
-      nextAppointment: "2024-01-25",
-      status: "active",
-      reminderPreference: "SMS"
-    },
-    {
-      id: 2,
-      name: "Michael Chen",
-      email: "michael.chen@email.com",
-      phone: "+1 (555) 234-5678",
-      lastVisit: "2024-01-10",
-      nextAppointment: "2024-01-30",
-      status: "active",
-      reminderPreference: "WhatsApp"
-    },
-    {
-      id: 3,
-      name: "Emily Davis",
-      email: "emily.davis@email.com",
-      phone: "+1 (555) 345-6789",
-      lastVisit: "2023-12-20",
-      nextAppointment: null,
-      status: "inactive",
-      reminderPreference: "Email"
-    },
-    {
-      id: 4,
-      name: "Robert Wilson",
-      email: "robert.wilson@email.com",
-      phone: "+1 (555) 456-7890",
-      lastVisit: "2024-01-08",
-      nextAppointment: "2024-01-28",
-      status: "active",
-      reminderPreference: "SMS"
-    },
-  ];
+  const { user } = useAuth();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    fetchPatients();
+  }, [user]);
+
+  const fetchPatients = async () => {
+    if (!user) return;
+    
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('patients')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching patients:', error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch patients",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      setPatients(data || []);
+    } catch (error) {
+      console.error('Error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddPatient = async () => {
+    if (!user) return;
+    
+    if (!formData.name || !formData.phone) {
+      toast({
+        title: "Error",
+        description: "Name and phone are required fields",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('patients')
+        .insert([
+          {
+            name: formData.name,
+            email: formData.email || null,
+            phone: formData.phone,
+            date_of_birth: formData.date_of_birth || null,
+          }
+        ])
+        .select();
+
+      if (error) {
+        console.error('Error adding patient:', error);
+        toast({
+          title: "Error",
+          description: "Failed to add patient",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      toast({
+        title: "Success",
+        description: "Patient added successfully",
+      });
+
+      // Reset form and close dialog
+      setFormData({
+        name: "",
+        email: "",
+        phone: "",
+        date_of_birth: "",
+        notes: ""
+      });
+      setIsDialogOpen(false);
+      
+      // Refresh patients list
+      fetchPatients();
+    } catch (error) {
+      console.error('Error:', error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred",
+        variant: "destructive"
+      });
+    }
+  };
 
   const filteredPatients = patients.filter(patient =>
     patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    patient.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (patient.email && patient.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
     patient.phone.includes(searchTerm)
   );
-
-  const getStatusBadge = (status: string) => {
-    return status === "active" 
-      ? "bg-green-100 text-green-800" 
-      : "bg-gray-100 text-gray-800";
-  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -77,13 +149,34 @@ const PatientManagement = () => {
     });
   };
 
+  const calculateAge = (dateOfBirth?: string) => {
+    if (!dateOfBirth) return 'N/A';
+    const today = new Date();
+    const birth = new Date(dateOfBirth);
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
+  if (loading) {
+    return (
+      <div className="text-center py-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+        <p className="mt-2 text-gray-600">Loading patients...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header and Search */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Patient Management</h2>
-          <p className="text-gray-600">Manage patient information and communication preferences</p>
+          <p className="text-gray-600">Manage patient information and records</p>
         </div>
         
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -97,45 +190,63 @@ const PatientManagement = () => {
             <DialogHeader>
               <DialogTitle>Add New Patient</DialogTitle>
               <DialogDescription>
-                Enter patient information and communication preferences.
+                Enter patient information to add them to the database.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="name" className="text-right">Name</Label>
-                <Input id="name" className="col-span-3" />
+                <Label htmlFor="name" className="text-right">Name *</Label>
+                <Input 
+                  id="name" 
+                  className="col-span-3" 
+                  value={formData.name}
+                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="email" className="text-right">Email</Label>
-                <Input id="email" type="email" className="col-span-3" />
+                <Input 
+                  id="email" 
+                  type="email" 
+                  className="col-span-3" 
+                  value={formData.email}
+                  onChange={(e) => setFormData({...formData, email: e.target.value})}
+                />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="phone" className="text-right">Phone</Label>
-                <Input id="phone" className="col-span-3" />
+                <Label htmlFor="phone" className="text-right">Phone *</Label>
+                <Input 
+                  id="phone" 
+                  className="col-span-3" 
+                  value={formData.phone}
+                  onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="preference" className="text-right">Reminder</Label>
-                <Select>
-                  <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Select preference" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="sms">SMS</SelectItem>
-                    <SelectItem value="whatsapp">WhatsApp</SelectItem>
-                    <SelectItem value="email">Email</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="dob" className="text-right">Birth Date</Label>
+                <Input 
+                  id="dob" 
+                  type="date" 
+                  className="col-span-3" 
+                  value={formData.date_of_birth}
+                  onChange={(e) => setFormData({...formData, date_of_birth: e.target.value})}
+                />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="notes" className="text-right">Notes</Label>
-                <Textarea id="notes" className="col-span-3" />
+                <Textarea 
+                  id="notes" 
+                  className="col-span-3" 
+                  value={formData.notes}
+                  onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                />
               </div>
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button onClick={() => setIsDialogOpen(false)}>
+              <Button onClick={handleAddPatient}>
                 Add Patient
               </Button>
             </div>
@@ -167,25 +278,24 @@ const PatientManagement = () => {
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
                     <h3 className="text-lg font-semibold text-gray-900">{patient.name}</h3>
-                    <Badge className={getStatusBadge(patient.status)}>
-                      {patient.status}
+                    <Badge className="bg-green-100 text-green-800">
+                      Active
                     </Badge>
-                    <Badge variant="outline" className="bg-blue-50 text-blue-700">
-                      {patient.reminderPreference}
-                    </Badge>
+                    {patient.medical_record_number && (
+                      <Badge variant="outline" className="bg-blue-50 text-blue-700">
+                        MRN: {patient.medical_record_number}
+                      </Badge>
+                    )}
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-600">
-                    <p>📧 {patient.email}</p>
+                    {patient.email && <p>📧 {patient.email}</p>}
                     <p>📱 {patient.phone}</p>
-                    <p>🗓️ Last visit: {formatDate(patient.lastVisit)}</p>
-                    <p>
-                      📅 Next appointment: {
-                        patient.nextAppointment 
-                          ? formatDate(patient.nextAppointment)
-                          : "Not scheduled"
-                      }
-                    </p>
+                    <p>🎂 Age: {calculateAge(patient.date_of_birth)}</p>
+                    <p>📅 Added: {formatDate(patient.created_at)}</p>
+                    {patient.date_of_birth && (
+                      <p>🗓️ DOB: {formatDate(patient.date_of_birth)}</p>
+                    )}
                   </div>
                 </div>
                 
@@ -208,7 +318,7 @@ const PatientManagement = () => {
         ))}
       </div>
 
-      {filteredPatients.length === 0 && (
+      {filteredPatients.length === 0 && !loading && (
         <Card className="bg-white/80 backdrop-blur-sm border-gray-200">
           <CardContent className="p-8 text-center">
             <Users className="mx-auto h-12 w-12 text-gray-400 mb-4" />
