@@ -17,6 +17,16 @@ const Index = () => {
   const { theme, themes } = useTheme();
   const currentTheme = themes[theme];
 
+  const handleViewCalendar = () => {
+    console.log("View calendar clicked");
+    // This would typically navigate to a calendar view
+  };
+
+  const handleViewReminders = () => {
+    console.log("View reminders clicked");
+    // This would typically navigate to a reminders view
+  };
+
   return (
     <div className={`min-h-screen bg-gradient-to-br ${currentTheme.colors.primary}`}>
       <div className="container mx-auto p-6 max-w-7xl">
@@ -129,7 +139,10 @@ const Index = () => {
           </TabsList>
 
           <TabsContent value="dashboard" className="space-y-6">
-            <DashboardOverview />
+            <DashboardOverview 
+              onViewCalendar={handleViewCalendar}
+              onViewReminders={handleViewReminders}
+            />
           </TabsContent>
 
           <TabsContent value="patients" className="space-y-6">
