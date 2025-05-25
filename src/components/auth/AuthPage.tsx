@@ -7,10 +7,12 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Heart } from "lucide-react";
+import { Loader2, Heart, Mail } from "lucide-react";
 
 const AuthPage = () => {
   const [isLoading, setIsLoading] = useState(false);
+  const [showEmailConfirmation, setShowEmailConfirmation] = useState(false);
+  const [userEmail, setUserEmail] = useState("");
   const { toast } = useToast();
 
   const handleSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -23,7 +25,7 @@ const AuthPage = () => {
     const fullName = formData.get("fullName") as string;
 
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -35,10 +37,20 @@ const AuthPage = () => {
 
       if (error) throw error;
 
-      toast({
-        title: "Account created successfully!",
-        description: "You can now sign in to your account.",
-      });
+      // Check if user needs email confirmation
+      if (data.user && !data.user.email_confirmed_at) {
+        setUserEmail(email);
+        setShowEmailConfirmation(true);
+        toast({
+          title: "Check your email!",
+          description: "We've sent you a confirmation link to complete your registration.",
+        });
+      } else {
+        toast({
+          title: "Account created successfully!",
+          description: "You can now sign in to your account.",
+        });
+      }
     } catch (error: any) {
       toast({
         title: "Error",
@@ -59,16 +71,57 @@ const AuthPage = () => {
     const password = formData.get("password") as string;
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
+      });
+
+      if (error) {
+        // Handle specific error cases
+        if (error.message.includes("Email not confirmed")) {
+          setUserEmail(email);
+          setShowEmailConfirmation(true);
+          toast({
+            title: "Email not confirmed",
+            description: "Please check your email and click the confirmation link before signing in.",
+            variant: "destructive",
+          });
+        } else {
+          throw error;
+        }
+      } else if (data.user) {
+        toast({
+          title: "Welcome back!",
+          description: "You have successfully signed in.",
+        });
+        // The auth state change will handle the redirect automatically
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const resendConfirmation = async () => {
+    if (!userEmail) return;
+    
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: userEmail,
       });
 
       if (error) throw error;
 
       toast({
-        title: "Welcome back!",
-        description: "You have successfully signed in.",
+        title: "Confirmation email sent!",
+        description: "Please check your email for the confirmation link.",
       });
     } catch (error: any) {
       toast({
@@ -80,6 +133,47 @@ const AuthPage = () => {
       setIsLoading(false);
     }
   };
+
+  if (showEmailConfirmation) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50 flex items-center justify-center p-6">
+        <div className="w-full max-w-md">
+          <Card className="bg-white/80 backdrop-blur-sm border-gray-200">
+            <CardHeader className="text-center">
+              <div className="flex justify-center mb-4">
+                <Mail className="h-12 w-12 text-blue-600" />
+              </div>
+              <CardTitle className="text-2xl">Check Your Email</CardTitle>
+              <CardDescription>
+                We've sent a confirmation link to <strong>{userEmail}</strong>
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-gray-600 text-center">
+                Click the link in your email to confirm your account, then you can sign in.
+              </p>
+              <Button 
+                onClick={resendConfirmation} 
+                variant="outline" 
+                className="w-full"
+                disabled={isLoading}
+              >
+                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Resend Confirmation Email
+              </Button>
+              <Button 
+                onClick={() => setShowEmailConfirmation(false)} 
+                variant="ghost" 
+                className="w-full"
+              >
+                Back to Sign In
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50 flex items-center justify-center p-6">
