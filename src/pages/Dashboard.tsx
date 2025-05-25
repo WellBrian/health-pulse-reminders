@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -9,12 +9,15 @@ import DashboardOverview from "@/components/dashboard/DashboardOverview";
 import PatientManagement from "@/components/patients/PatientManagement";
 import ReminderScheduler from "@/components/reminders/ReminderScheduler";
 import AnalyticsDashboard from "@/components/analytics/AnalyticsDashboard";
+import CalendarView from "@/components/calendar/CalendarView";
+import RemindersView from "@/components/reminders/RemindersView";
 import ThemeSelector from "@/components/theme/ThemeSelector";
-import { Calendar, Users, Bell, BarChart3, Palette, LogOut } from "lucide-react";
+import { CalendarIcon, Users, Bell, BarChart3, Palette, LogOut } from "lucide-react";
 
 const Dashboard = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [showThemeSelector, setShowThemeSelector] = useState(false);
+  const [currentView, setCurrentView] = useState<'dashboard' | 'calendar' | 'reminders'>('dashboard');
   const { theme, themes } = useTheme();
   const { signOut, user } = useAuth();
   const currentTheme = themes[theme];
@@ -22,6 +25,39 @@ const Dashboard = () => {
   const handleSignOut = async () => {
     await signOut();
   };
+
+  const handleViewCalendar = () => {
+    setCurrentView('calendar');
+  };
+
+  const handleViewReminders = () => {
+    setCurrentView('reminders');
+  };
+
+  const handleBackToDashboard = () => {
+    setCurrentView('dashboard');
+  };
+
+  // Show specific views when requested
+  if (currentView === 'calendar') {
+    return (
+      <div className={`min-h-screen bg-gradient-to-br ${currentTheme.colors.primary}`}>
+        <div className="container mx-auto p-6 max-w-7xl">
+          <CalendarView onBack={handleBackToDashboard} />
+        </div>
+      </div>
+    );
+  }
+
+  if (currentView === 'reminders') {
+    return (
+      <div className={`min-h-screen bg-gradient-to-br ${currentTheme.colors.primary}`}>
+        <div className="container mx-auto p-6 max-w-7xl">
+          <RemindersView onBack={handleBackToDashboard} />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`min-h-screen bg-gradient-to-br ${currentTheme.colors.primary}`}>
@@ -79,7 +115,7 @@ const Dashboard = () => {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
             <Card className={`${currentTheme.colors.background} backdrop-blur-sm ${currentTheme.colors.accent}`}>
               <CardContent className="p-4 flex items-center">
-                <Calendar className="h-8 w-8 text-blue-600 mr-3" />
+                <CalendarIcon className="h-8 w-8 text-blue-600 mr-3" />
                 <div>
                   <p className="text-sm text-gray-600">Today's Appointments</p>
                   <p className="text-2xl font-bold text-gray-900">24</p>
@@ -123,7 +159,7 @@ const Dashboard = () => {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className={`grid w-full grid-cols-4 ${currentTheme.colors.background} backdrop-blur-sm`}>
             <TabsTrigger value="dashboard" className="flex items-center space-x-2">
-              <Calendar className="h-4 w-4" />
+              <CalendarIcon className="h-4 w-4" />
               <span>Dashboard</span>
             </TabsTrigger>
             <TabsTrigger value="patients" className="flex items-center space-x-2">
@@ -141,7 +177,10 @@ const Dashboard = () => {
           </TabsList>
 
           <TabsContent value="dashboard" className="space-y-6">
-            <DashboardOverview />
+            <DashboardOverview 
+              onViewCalendar={handleViewCalendar}
+              onViewReminders={handleViewReminders}
+            />
           </TabsContent>
 
           <TabsContent value="patients" className="space-y-6">

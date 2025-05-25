@@ -1,37 +1,162 @@
+
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useTheme } from "@/contexts/ThemeContext";
-import { Calendar, Users, Bell, ArrowRight } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { CalendarIcon, Bell, ArrowRight } from "lucide-react";
+import { format } from "date-fns";
+import QuickActions from "@/components/actions/QuickActions";
+import SystemStatus from "@/components/system/SystemStatus";
 
-const DashboardOverview = () => {
+interface DashboardOverviewProps {
+  onViewCalendar: () => void;
+  onViewReminders: () => void;
+}
+
+interface Appointment {
+  id: string;
+  appointment_date: string;
+  status: string;
+  notes?: string;
+  patients: { name: string } | null;
+  doctors: { name: string } | null;
+}
+
+interface Reminder {
+  id: string;
+  reminder_type: string;
+  status: string;
+  created_at: string;
+  delivery_status?: string;
+  appointments: {
+    patients: { name: string } | null;
+  } | null;
+}
+
+const DashboardOverview = ({ onViewCalendar, onViewReminders }: DashboardOverviewProps) => {
   const { theme, themes } = useTheme();
+  const { user } = useAuth();
   const currentTheme = themes[theme];
+  
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [reminders, setReminders] = useState<Reminder[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const upcomingAppointments = [
-    { id: 1, patient: "Sarah Johnson", time: "09:00 AM", type: "Consultation", status: "confirmed" },
-    { id: 2, patient: "Michael Chen", time: "10:30 AM", type: "Follow-up", status: "pending" },
-    { id: 3, patient: "Emily Davis", time: "02:15 PM", type: "Check-up", status: "confirmed" },
-    { id: 4, patient: "Robert Wilson", time: "04:00 PM", type: "Consultation", status: "reminder_sent" },
-  ];
+  const fetchTodayAppointments = async () => {
+    try {
+      const today = new Date();
+      const startOfDay = new Date(today);
+      startOfDay.setHours(0, 0, 0, 0);
+      
+      const endOfDay = new Date(today);
+      endOfDay.setHours(23, 59, 59, 999);
 
-  const recentReminders = [
-    { id: 1, patient: "Alice Brown", type: "SMS", status: "delivered", time: "2 hours ago" },
-    { id: 2, patient: "John Smith", type: "WhatsApp", status: "delivered", time: "3 hours ago" },
-    { id: 3, patient: "Maria Garcia", type: "Email", status: "pending", time: "5 hours ago" },
-    { id: 4, patient: "David Lee", type: "SMS", status: "failed", time: "6 hours ago" },
-  ];
+      const { data, error } = await supabase
+        .from('appointments')
+        .select(`
+          id,
+          appointment_date,
+          status,
+          notes,
+          patients(name),
+          doctors(name)
+        `)
+        .gte('appointment_date', startOfDay.toISOString())
+        .lte('appointment_date', endOfDay.toISOString())
+        .order('appointment_date', { ascending: true })
+        .limit(4);
+
+      if (error) {
+        console.error('Error fetching appointments:', error);
+        return;
+      }
+
+      setAppointments(data || []);
+    } catch (error) {
+      console.error('Error fetching appointments:', error);
+    }
+  };
+
+  const fetchRecentReminders = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('reminders')
+        .select(`
+          id,
+          reminder_type,
+          status,
+          created_at,
+          delivery_status,
+          appointments(
+            patients(name)
+          )
+        `)
+        .order('created_at', { ascending: false })
+        .limit(4);
+
+      if (error) {
+        console.error('Error fetching reminders:', error);
+        return;
+      }
+
+      setReminders(data || []);
+    } catch (error) {
+      console.error('Error fetching reminders:', error);
+    }
+  };
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      await Promise.all([
+        fetchTodayAppointments(),
+        fetchRecentReminders()
+      ]);
+      setLoading(false);
+    };
+
+    if (user) {
+      fetchData();
+    }
+  }, [user]);
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
       confirmed: { variant: "default" as const, color: "bg-green-100 text-green-800" },
+      scheduled: { variant: "secondary" as const, color: "bg-blue-100 text-blue-800" },
       pending: { variant: "secondary" as const, color: "bg-yellow-100 text-yellow-800" },
       reminder_sent: { variant: "outline" as const, color: "bg-blue-100 text-blue-800" },
       delivered: { variant: "default" as const, color: "bg-green-100 text-green-800" },
       failed: { variant: "destructive" as const, color: "bg-red-100 text-red-800" },
+      completed: { variant: "outline" as const, color: "bg-gray-100 text-gray-800" },
+      cancelled: { variant: "destructive" as const, color: "bg-red-100 text-red-800" },
+      sent: { variant: "default" as const, color: "bg-green-100 text-green-800" },
     };
     
     return statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
+  };
+
+  const formatTime = (dateString: string) => {
+    return format(new Date(dateString), 'h:mm a');
+  };
+
+  const getTimeAgo = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
+    
+    if (diffInHours < 1) {
+      const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
+      return `${diffInMinutes} minutes ago`;
+    } else if (diffInHours < 24) {
+      return `${diffInHours} hours ago`;
+    } else {
+      const diffInDays = Math.floor(diffInHours / 24);
+      return `${diffInDays} days ago`;
+    }
   };
 
   return (
@@ -43,23 +168,42 @@ const DashboardOverview = () => {
             <CardTitle className="text-xl font-semibold">Today's Appointments</CardTitle>
             <CardDescription>Manage your schedule for today</CardDescription>
           </div>
-          <Calendar className="h-6 w-6 text-blue-600" />
+          <CalendarIcon className="h-6 w-6 text-blue-600" />
         </CardHeader>
         <CardContent className="space-y-4">
-          {upcomingAppointments.map((appointment) => (
-            <div key={appointment.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-              <div className="flex-1">
-                <div className="flex items-center justify-between mb-1">
-                  <p className="font-medium text-gray-900">{appointment.patient}</p>
-                  <Badge className={getStatusBadge(appointment.status).color}>
-                    {appointment.status.replace('_', ' ')}
-                  </Badge>
-                </div>
-                <p className="text-sm text-gray-600">{appointment.time} • {appointment.type}</p>
-              </div>
+          {loading ? (
+            <div className="text-center py-4">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
+              <p className="mt-2 text-sm text-gray-600">Loading...</p>
             </div>
-          ))}
-          <Button className="w-full mt-4" variant="outline">
+          ) : appointments.length === 0 ? (
+            <div className="text-center py-6 text-gray-500">
+              <CalendarIcon className="mx-auto h-8 w-8 text-gray-400 mb-2" />
+              <p>No appointments scheduled for today</p>
+            </div>
+          ) : (
+            appointments.map((appointment) => (
+              <div key={appointment.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                <div className="flex-1">
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="font-medium text-gray-900">
+                      {appointment.patients?.name || 'Unknown Patient'}
+                    </p>
+                    <Badge className={getStatusBadge(appointment.status).color}>
+                      {appointment.status.replace('_', ' ')}
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-gray-600">
+                    {formatTime(appointment.appointment_date)} • Dr. {appointment.doctors?.name || 'TBD'}
+                  </p>
+                  {appointment.notes && (
+                    <p className="text-xs text-gray-500 mt-1">{appointment.notes}</p>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+          <Button className="w-full mt-4" variant="outline" onClick={onViewCalendar}>
             View Full Calendar
             <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
@@ -76,20 +220,36 @@ const DashboardOverview = () => {
           <Bell className="h-6 w-6 text-purple-600" />
         </CardHeader>
         <CardContent className="space-y-4">
-          {recentReminders.map((reminder) => (
-            <div key={reminder.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-              <div className="flex-1">
-                <div className="flex items-center justify-between mb-1">
-                  <p className="font-medium text-gray-900">{reminder.patient}</p>
-                  <Badge className={getStatusBadge(reminder.status).color}>
-                    {reminder.status}
-                  </Badge>
-                </div>
-                <p className="text-sm text-gray-600">{reminder.type} • {reminder.time}</p>
-              </div>
+          {loading ? (
+            <div className="text-center py-4">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600 mx-auto"></div>
+              <p className="mt-2 text-sm text-gray-600">Loading...</p>
             </div>
-          ))}
-          <Button className="w-full mt-4" variant="outline">
+          ) : reminders.length === 0 ? (
+            <div className="text-center py-6 text-gray-500">
+              <Bell className="mx-auto h-8 w-8 text-gray-400 mb-2" />
+              <p>No recent reminder activity</p>
+            </div>
+          ) : (
+            reminders.map((reminder) => (
+              <div key={reminder.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                <div className="flex-1">
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="font-medium text-gray-900">
+                      {reminder.appointments?.patients?.name || 'Unknown Patient'}
+                    </p>
+                    <Badge className={getStatusBadge(reminder.delivery_status || reminder.status).color}>
+                      {reminder.delivery_status || reminder.status}
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-gray-600">
+                    {reminder.reminder_type.toUpperCase()} • {getTimeAgo(reminder.created_at)}
+                  </p>
+                </div>
+              </div>
+            ))
+          )}
+          <Button className="w-full mt-4" variant="outline" onClick={onViewReminders}>
             View All Reminders
             <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
@@ -97,64 +257,10 @@ const DashboardOverview = () => {
       </Card>
 
       {/* Quick Actions */}
-      <Card className={`${currentTheme.colors.background} backdrop-blur-sm border-gray-200`}>
-        <CardHeader>
-          <CardTitle className="text-xl font-semibold">Quick Actions</CardTitle>
-          <CardDescription>Common tasks and shortcuts</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <Button className="w-full justify-start" variant="outline">
-            <Users className="mr-2 h-4 w-4" />
-            Add New Patient
-          </Button>
-          <Button className="w-full justify-start" variant="outline">
-            <Calendar className="mr-2 h-4 w-4" />
-            Schedule Appointment
-          </Button>
-          <Button className="w-full justify-start" variant="outline">
-            <Bell className="mr-2 h-4 w-4" />
-            Send Bulk Reminders
-          </Button>
-        </CardContent>
-      </Card>
+      <QuickActions />
 
       {/* System Status */}
-      <Card className={`${currentTheme.colors.background} backdrop-blur-sm border-gray-200`}>
-        <CardHeader>
-          <CardTitle className="text-xl font-semibold">System Status</CardTitle>
-          <CardDescription>Service health and performance</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">SMS Service</span>
-            <div className="flex items-center">
-              <div className="h-2 w-2 bg-green-400 rounded-full mr-2"></div>
-              <span className="text-sm text-green-600">Operational</span>
-            </div>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">WhatsApp API</span>
-            <div className="flex items-center">
-              <div className="h-2 w-2 bg-green-400 rounded-full mr-2"></div>
-              <span className="text-sm text-green-600">Operational</span>
-            </div>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">Email Service</span>
-            <div className="flex items-center">
-              <div className="h-2 w-2 bg-yellow-400 rounded-full mr-2"></div>
-              <span className="text-sm text-yellow-600">Degraded</span>
-            </div>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">Database</span>
-            <div className="flex items-center">
-              <div className="h-2 w-2 bg-green-400 rounded-full mr-2"></div>
-              <span className="text-sm text-green-600">Operational</span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <SystemStatus />
     </div>
   );
 };
