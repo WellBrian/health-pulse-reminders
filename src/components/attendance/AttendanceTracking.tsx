@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -56,8 +55,8 @@ const AttendanceTracking = () => {
         .from('appointments')
         .select(`
           *,
-          patients(name, phone),
-          doctors(name, specialization)
+          patients!fk_appointments_patient_id(name, phone),
+          doctors!fk_appointments_doctor_id(name, specialization)
         `)
         .in('attendance_status', ['checked_in', 'completed'])
         .gte('appointment_date', startOfDay.toISOString())

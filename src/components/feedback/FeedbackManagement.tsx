@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -46,10 +45,10 @@ const FeedbackManagement = () => {
         .from('feedback')
         .select(`
           *,
-          patients(name),
-          appointments(
+          patients!fk_feedback_patient_id(name),
+          appointments!fk_feedback_appointment_id(
             appointment_date,
-            doctors(name)
+            doctors!fk_appointments_doctor_id(name)
           )
         `)
         .order('created_at', { ascending: false });

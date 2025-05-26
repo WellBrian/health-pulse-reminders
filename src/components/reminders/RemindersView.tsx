@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -43,9 +42,9 @@ const RemindersView = ({ onBack }: RemindersViewProps) => {
         .from('reminders')
         .select(`
           *,
-          appointments(
-            patients(name),
-            doctors(name),
+          appointments!fk_reminders_appointment_id(
+            patients!fk_appointments_patient_id(name),
+            doctors!fk_appointments_doctor_id(name),
             appointment_date
           )
         `)

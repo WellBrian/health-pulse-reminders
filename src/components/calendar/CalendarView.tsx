@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -49,8 +48,8 @@ const CalendarView = ({ onBack }: CalendarViewProps) => {
         .from('appointments')
         .select(`
           *,
-          patients(name, phone),
-          doctors(name, specialization)
+          patients!fk_appointments_patient_id(name, phone),
+          doctors!fk_appointments_doctor_id(name, specialization)
         `)
         .gte('appointment_date', startOfDay.toISOString())
         .lte('appointment_date', endOfDay.toISOString())

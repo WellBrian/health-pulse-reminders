@@ -48,7 +48,7 @@ const DynamicMetrics = () => {
         .gte('appointment_date', startOfDay.toISOString())
         .lte('appointment_date', endOfDay.toISOString());
 
-      // Fetch active patients (those with recent appointments or upcoming ones)
+      // Fetch active patients (total patients in system)
       const { data: patients, error: patientsError } = await supabase
         .from('patients')
         .select('id');
@@ -57,7 +57,7 @@ const DynamicMetrics = () => {
       const { data: reminders, error: remindersError } = await supabase
         .from('reminders')
         .select('id')
-        .eq('delivery_status', 'sent');
+        .eq('status', 'sent');
 
       // Calculate success rate based on completed appointments vs total appointments
       const { data: completedAppts, error: completedError } = await supabase

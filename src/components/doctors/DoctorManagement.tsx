@@ -20,18 +20,26 @@ interface Doctor {
   specialization?: string;
   clinic_id?: string;
   created_at: string;
+  clinics?: { name: string } | null;
+}
+
+interface Clinic {
+  id: string;
+  name: string;
 }
 
 const DoctorManagement = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [clinics, setClinics] = useState<Clinic[]>([]);
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     phone: "",
     specialization: "",
+    clinic_id: "",
   });
 
   const { user } = useAuth();
@@ -39,7 +47,26 @@ const DoctorManagement = () => {
 
   useEffect(() => {
     fetchDoctors();
+    fetchClinics();
   }, [user]);
+
+  const fetchClinics = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('clinics')
+        .select('id, name')
+        .order('name');
+
+      if (error) {
+        console.error('Error fetching clinics:', error);
+        return;
+      }
+
+      setClinics(data || []);
+    } catch (error) {
+      console.error('Error:', error);
+    }
+  };
 
   const fetchDoctors = async () => {
     if (!user) return;
@@ -48,7 +75,10 @@ const DoctorManagement = () => {
     try {
       const { data, error } = await supabase
         .from('doctors')
-        .select('*')
+        .select(`
+          *,
+          clinics!fk_doctors_clinic_id(name)
+        `)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -90,7 +120,7 @@ const DoctorManagement = () => {
             email: formData.email,
             phone: formData.phone || null,
             specialization: formData.specialization || null,
-            clinic_id: '550e8400-e29b-41d4-a716-446655440000'
+            clinic_id: formData.clinic_id || null
           }
         ])
         .select();
@@ -115,6 +145,7 @@ const DoctorManagement = () => {
         email: "",
         phone: "",
         specialization: "",
+        clinic_id: "",
       });
       setIsDialogOpen(false);
       fetchDoctors();
@@ -131,7 +162,8 @@ const DoctorManagement = () => {
   const filteredDoctors = doctors.filter(doctor =>
     doctor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     doctor.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (doctor.specialization && doctor.specialization.toLowerCase().includes(searchTerm.toLowerCase()))
+    (doctor.specialization && doctor.specialization.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (doctor.clinics?.name && doctor.clinics.name.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const formatDate = (dateString: string) => {
@@ -218,6 +250,21 @@ const DoctorManagement = () => {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="clinic" className="text-right">Clinic</Label>
+                <Select onValueChange={(value) => setFormData({...formData, clinic_id: value})}>
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue placeholder="Select clinic" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clinics.map((clinic) => (
+                      <SelectItem key={clinic.id} value={clinic.id}>
+                        {clinic.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
@@ -236,7 +283,7 @@ const DoctorManagement = () => {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
             <Input
-              placeholder="Search doctors by name, email, or specialization..."
+              placeholder="Search doctors by name, email, specialization, or clinic..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
@@ -256,6 +303,11 @@ const DoctorManagement = () => {
                     {doctor.specialization && (
                       <Badge className="bg-blue-100 text-blue-800">
                         {doctor.specialization}
+                      </Badge>
+                    )}
+                    {doctor.clinics?.name && (
+                      <Badge variant="outline" className="bg-green-50 text-green-700">
+                        {doctor.clinics.name}
                       </Badge>
                     )}
                   </div>

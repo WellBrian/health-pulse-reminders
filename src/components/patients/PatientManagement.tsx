@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -23,18 +22,26 @@ interface Patient {
   date_of_birth?: string;
   medical_record_number?: string;
   clinic_id?: string;
+  clinics?: { name: string } | null;
+}
+
+interface Clinic {
+  id: string;
+  name: string;
 }
 
 const PatientManagement = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [patients, setPatients] = useState<Patient[]>([]);
+  const [clinics, setClinics] = useState<Clinic[]>([]);
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     phone: "",
     date_of_birth: "",
+    clinic_id: "",
     notes: ""
   });
 
@@ -43,7 +50,26 @@ const PatientManagement = () => {
 
   useEffect(() => {
     fetchPatients();
+    fetchClinics();
   }, [user]);
+
+  const fetchClinics = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('clinics')
+        .select('id, name')
+        .order('name');
+
+      if (error) {
+        console.error('Error fetching clinics:', error);
+        return;
+      }
+
+      setClinics(data || []);
+    } catch (error) {
+      console.error('Error:', error);
+    }
+  };
 
   const fetchPatients = async () => {
     if (!user) return;
@@ -52,7 +78,10 @@ const PatientManagement = () => {
     try {
       const { data, error } = await supabase
         .from('patients')
-        .select('*')
+        .select(`
+          *,
+          clinics!fk_patients_clinic_id(name)
+        `)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -94,6 +123,7 @@ const PatientManagement = () => {
             email: formData.email || null,
             phone: formData.phone,
             date_of_birth: formData.date_of_birth || null,
+            clinic_id: formData.clinic_id || null
           }
         ])
         .select();
@@ -119,6 +149,7 @@ const PatientManagement = () => {
         email: "",
         phone: "",
         date_of_birth: "",
+        clinic_id: "",
         notes: ""
       });
       setIsDialogOpen(false);
@@ -138,7 +169,8 @@ const PatientManagement = () => {
   const filteredPatients = patients.filter(patient =>
     patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (patient.email && patient.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    patient.phone.includes(searchTerm)
+    patient.phone.includes(searchTerm) ||
+    (patient.clinics?.name && patient.clinics.name.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const formatDate = (dateString: string) => {
@@ -233,6 +265,21 @@ const PatientManagement = () => {
                 />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="clinic" className="text-right">Clinic</Label>
+                <Select onValueChange={(value) => setFormData({...formData, clinic_id: value})}>
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue placeholder="Select clinic" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clinics.map((clinic) => (
+                      <SelectItem key={clinic.id} value={clinic.id}>
+                        {clinic.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="notes" className="text-right">Notes</Label>
                 <Textarea 
                   id="notes" 
@@ -260,7 +307,7 @@ const PatientManagement = () => {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
             <Input
-              placeholder="Search patients by name, email, or phone..."
+              placeholder="Search patients by name, email, phone, or clinic..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
@@ -281,9 +328,9 @@ const PatientManagement = () => {
                     <Badge className="bg-green-100 text-green-800">
                       Active
                     </Badge>
-                    {patient.medical_record_number && (
+                    {patient.clinics?.name && (
                       <Badge variant="outline" className="bg-blue-50 text-blue-700">
-                        MRN: {patient.medical_record_number}
+                        {patient.clinics.name}
                       </Badge>
                     )}
                   </div>

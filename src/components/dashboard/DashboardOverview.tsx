@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -64,8 +63,8 @@ const DashboardOverview = ({ onViewCalendar, onViewReminders }: DashboardOvervie
           appointment_date,
           status,
           notes,
-          patients(name),
-          doctors(name)
+          patients!fk_appointments_patient_id(name),
+          doctors!fk_appointments_doctor_id(name)
         `)
         .gte('appointment_date', startOfDay.toISOString())
         .lte('appointment_date', endOfDay.toISOString())
@@ -93,8 +92,8 @@ const DashboardOverview = ({ onViewCalendar, onViewReminders }: DashboardOvervie
           status,
           created_at,
           delivery_status,
-          appointments(
-            patients(name)
+          appointments!fk_reminders_appointment_id(
+            patients!fk_appointments_patient_id(name)
           )
         `)
         .order('created_at', { ascending: false })
