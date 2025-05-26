@@ -12,7 +12,10 @@ export type Database = {
       appointments: {
         Row: {
           appointment_date: string
+          attendance_status: string | null
+          checked_in_at: string | null
           clinic_id: string | null
+          completed_at: string | null
           created_at: string | null
           doctor_id: string | null
           follow_up_date: string | null
@@ -25,7 +28,10 @@ export type Database = {
         }
         Insert: {
           appointment_date: string
+          attendance_status?: string | null
+          checked_in_at?: string | null
           clinic_id?: string | null
+          completed_at?: string | null
           created_at?: string | null
           doctor_id?: string | null
           follow_up_date?: string | null
@@ -38,7 +44,10 @@ export type Database = {
         }
         Update: {
           appointment_date?: string
+          attendance_status?: string | null
+          checked_in_at?: string | null
           clinic_id?: string | null
+          completed_at?: string | null
           created_at?: string | null
           doctor_id?: string | null
           follow_up_date?: string | null
@@ -71,6 +80,27 @@ export type Database = {
             referencedRelation: "patients"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "fk_appointments_clinic_id"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_appointments_doctor_id"
+            columns: ["doctor_id"]
+            isOneToOne: false
+            referencedRelation: "doctors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_appointments_patient_id"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
         ]
       }
       clinic_users: {
@@ -98,6 +128,13 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "clinic_users_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_clinic_users_clinic_id"
             columns: ["clinic_id"]
             isOneToOne: false
             referencedRelation: "clinics"
@@ -174,6 +211,13 @@ export type Database = {
             referencedRelation: "clinics"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "fk_doctors_clinic_id"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
         ]
       }
       feedback: {
@@ -229,6 +273,27 @@ export type Database = {
             referencedRelation: "patients"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "fk_feedback_appointment_id"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_feedback_clinic_id"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_feedback_patient_id"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
         ]
       }
       patients: {
@@ -266,6 +331,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_patients_clinic_id"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "patients_clinic_id_fkey"
             columns: ["clinic_id"]
@@ -335,6 +407,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_reminders_appointment_id"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "reminders_appointment_id_fkey"
             columns: ["appointment_id"]
             isOneToOne: false
@@ -382,6 +461,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_subscriptions_clinic_id"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "subscriptions_clinic_id_fkey"
             columns: ["clinic_id"]
             isOneToOne: false
@@ -416,6 +502,13 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_user_activity_clinic_id"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "user_activity_clinic_id_fkey"
             columns: ["clinic_id"]

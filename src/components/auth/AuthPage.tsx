@@ -7,13 +7,32 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Heart, Mail } from "lucide-react";
+import { Loader2, Heart, Mail, Eye, EyeOff, CheckCircle } from "lucide-react";
 
 const AuthPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showEmailConfirmation, setShowEmailConfirmation] = useState(false);
   const [userEmail, setUserEmail] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const { toast } = useToast();
+
+  // Detect if user came from an email link
+  const urlParams = new URLSearchParams(window.location.search);
+  const accessToken = urlParams.get('access_token');
+  const refreshToken = urlParams.get('refresh_token');
+  const type = urlParams.get('type');
+
+  // Handle email confirmation automatically
+  useState(() => {
+    if (accessToken && refreshToken && type === 'signup') {
+      toast({
+        title: "Email Confirmed!",
+        description: "Your email has been confirmed. You can now sign in.",
+        variant: "default",
+      });
+    }
+  });
 
   const handleSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -22,7 +41,30 @@ const AuthPage = () => {
     const formData = new FormData(e.currentTarget);
     const email = formData.get("email") as string;
     const password = formData.get("password") as string;
+    const confirmPassword = formData.get("confirmPassword") as string;
     const fullName = formData.get("fullName") as string;
+
+    // Validate passwords match
+    if (password !== confirmPassword) {
+      toast({
+        title: "Error",
+        description: "Passwords do not match",
+        variant: "destructive",
+      });
+      setIsLoading(false);
+      return;
+    }
+
+    // Validate password strength
+    if (password.length < 6) {
+      toast({
+        title: "Error",
+        description: "Password must be at least 6 characters long",
+        variant: "destructive",
+      });
+      setIsLoading(false);
+      return;
+    }
 
     try {
       const { data, error } = await supabase.auth.signUp({
@@ -32,13 +74,21 @@ const AuthPage = () => {
           data: {
             full_name: fullName,
           },
+          emailRedirectTo: `${window.location.origin}`,
         },
       });
 
-      if (error) throw error;
-
-      // Check if user needs email confirmation
-      if (data.user && !data.user.email_confirmed_at) {
+      if (error) {
+        if (error.message.includes("already registered")) {
+          toast({
+            title: "Account exists",
+            description: "This email is already registered. Please sign in instead.",
+            variant: "destructive",
+          });
+        } else {
+          throw error;
+        }
+      } else if (data.user && !data.user.email_confirmed_at) {
         setUserEmail(email);
         setShowEmailConfirmation(true);
         toast({
@@ -77,13 +127,18 @@ const AuthPage = () => {
       });
 
       if (error) {
-        // Handle specific error cases
         if (error.message.includes("Email not confirmed")) {
           setUserEmail(email);
           setShowEmailConfirmation(true);
           toast({
             title: "Email not confirmed",
             description: "Please check your email and click the confirmation link before signing in.",
+            variant: "destructive",
+          });
+        } else if (error.message.includes("Invalid login credentials")) {
+          toast({
+            title: "Invalid credentials",
+            description: "Please check your email and password and try again.",
             variant: "destructive",
           });
         } else {
@@ -94,7 +149,6 @@ const AuthPage = () => {
           title: "Welcome back!",
           description: "You have successfully signed in.",
         });
-        // The auth state change will handle the redirect automatically
       }
     } catch (error: any) {
       toast({
@@ -115,6 +169,9 @@ const AuthPage = () => {
       const { error } = await supabase.auth.resend({
         type: 'signup',
         email: userEmail,
+        options: {
+          emailRedirectTo: `${window.location.origin}`,
+        }
       });
 
       if (error) throw error;
@@ -149,9 +206,20 @@ const AuthPage = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <p className="text-sm text-gray-600 text-center">
-                Click the link in your email to confirm your account, then you can sign in.
-              </p>
+              <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <div className="flex items-start space-x-3">
+                  <CheckCircle className="h-5 w-5 text-blue-600 mt-0.5" />
+                  <div className="text-sm text-blue-800">
+                    <p className="font-medium">Instructions:</p>
+                    <ul className="mt-1 space-y-1 list-disc list-inside">
+                      <li>Check your email inbox (and spam folder)</li>
+                      <li>Click the confirmation link in the email</li>
+                      <li>You'll be redirected back here automatically</li>
+                      <li>Then you can sign in with your credentials</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
               <Button 
                 onClick={resendConfirmation} 
                 variant="outline" 
@@ -184,6 +252,11 @@ const AuthPage = () => {
             <h1 className="text-4xl font-bold text-gray-900">HealthPulse</h1>
           </div>
           <p className="text-lg text-gray-600">Smart Healthcare Reminder System</p>
+          {accessToken && (
+            <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+              <p className="text-sm text-green-800">✅ Email confirmed! You can now sign in.</p>
+            </div>
+          )}
         </div>
 
         <Card className="bg-white/80 backdrop-blur-sm border-gray-200">
@@ -215,14 +288,30 @@ const AuthPage = () => {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="signin-password">Password</Label>
-                    <Input
-                      id="signin-password"
-                      name="password"
-                      type="password"
-                      placeholder="Enter your password"
-                      required
-                      disabled={isLoading}
-                    />
+                    <div className="relative">
+                      <Input
+                        id="signin-password"
+                        name="password"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Enter your password"
+                        required
+                        disabled={isLoading}
+                        className="pr-10"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                        onClick={() => setShowPassword(!showPassword)}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4 text-gray-400" />
+                        ) : (
+                          <Eye className="h-4 w-4 text-gray-400" />
+                        )}
+                      </Button>
+                    </div>
                   </div>
                   <Button type="submit" className="w-full" disabled={isLoading}>
                     {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -257,14 +346,57 @@ const AuthPage = () => {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="signup-password">Password</Label>
-                    <Input
-                      id="signup-password"
-                      name="password"
-                      type="password"
-                      placeholder="Create a password"
-                      required
-                      disabled={isLoading}
-                    />
+                    <div className="relative">
+                      <Input
+                        id="signup-password"
+                        name="password"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Create a password (min 6 characters)"
+                        required
+                        disabled={isLoading}
+                        className="pr-10"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                        onClick={() => setShowPassword(!showPassword)}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4 text-gray-400" />
+                        ) : (
+                          <Eye className="h-4 w-4 text-gray-400" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="confirm-password">Confirm Password</Label>
+                    <div className="relative">
+                      <Input
+                        id="confirm-password"
+                        name="confirmPassword"
+                        type={showConfirmPassword ? "text" : "password"}
+                        placeholder="Confirm your password"
+                        required
+                        disabled={isLoading}
+                        className="pr-10"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      >
+                        {showConfirmPassword ? (
+                          <EyeOff className="h-4 w-4 text-gray-400" />
+                        ) : (
+                          <Eye className="h-4 w-4 text-gray-400" />
+                        )}
+                      </Button>
+                    </div>
                   </div>
                   <Button type="submit" className="w-full" disabled={isLoading}>
                     {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

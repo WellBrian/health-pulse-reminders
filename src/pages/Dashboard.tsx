@@ -7,12 +7,16 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/hooks/useAuth";
 import DashboardOverview from "@/components/dashboard/DashboardOverview";
 import PatientManagement from "@/components/patients/PatientManagement";
+import DoctorManagement from "@/components/doctors/DoctorManagement";
 import ReminderScheduler from "@/components/reminders/ReminderScheduler";
 import AnalyticsDashboard from "@/components/analytics/AnalyticsDashboard";
+import FeedbackManagement from "@/components/feedback/FeedbackManagement";
+import AttendanceTracking from "@/components/attendance/AttendanceTracking";
 import CalendarView from "@/components/calendar/CalendarView";
 import RemindersView from "@/components/reminders/RemindersView";
 import ThemeSelector from "@/components/theme/ThemeSelector";
-import { CalendarIcon, Users, Bell, BarChart3, Palette, LogOut } from "lucide-react";
+import DynamicMetrics from "@/components/dashboard/DynamicMetrics";
+import { CalendarIcon, Users, Bell, BarChart3, Palette, LogOut, UserCheck, MessageSquare, CheckCircle, Stethoscope } from "lucide-react";
 
 const Dashboard = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -111,53 +115,13 @@ const Dashboard = () => {
             </div>
           )}
           
-          {/* Quick Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            <Card className={`${currentTheme.colors.background} backdrop-blur-sm ${currentTheme.colors.accent}`}>
-              <CardContent className="p-4 flex items-center">
-                <CalendarIcon className="h-8 w-8 text-blue-600 mr-3" />
-                <div>
-                  <p className="text-sm text-gray-600">Today's Appointments</p>
-                  <p className="text-2xl font-bold text-gray-900">24</p>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card className={`${currentTheme.colors.background} backdrop-blur-sm border-green-100`}>
-              <CardContent className="p-4 flex items-center">
-                <Users className="h-8 w-8 text-green-600 mr-3" />
-                <div>
-                  <p className="text-sm text-gray-600">Active Patients</p>
-                  <p className="text-2xl font-bold text-gray-900">1,247</p>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card className={`${currentTheme.colors.background} backdrop-blur-sm border-purple-100`}>
-              <CardContent className="p-4 flex items-center">
-                <Bell className="h-8 w-8 text-purple-600 mr-3" />
-                <div>
-                  <p className="text-sm text-gray-600">Reminders Sent</p>
-                  <p className="text-2xl font-bold text-gray-900">156</p>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card className={`${currentTheme.colors.background} backdrop-blur-sm border-orange-100`}>
-              <CardContent className="p-4 flex items-center">
-                <BarChart3 className="h-8 w-8 text-orange-600 mr-3" />
-                <div>
-                  <p className="text-sm text-gray-600">Success Rate</p>
-                  <p className="text-2xl font-bold text-gray-900">94%</p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          {/* Dynamic Quick Stats */}
+          <DynamicMetrics />
         </div>
 
         {/* Main Content */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className={`grid w-full grid-cols-4 ${currentTheme.colors.background} backdrop-blur-sm`}>
+          <TabsList className={`grid w-full grid-cols-7 ${currentTheme.colors.background} backdrop-blur-sm`}>
             <TabsTrigger value="dashboard" className="flex items-center space-x-2">
               <CalendarIcon className="h-4 w-4" />
               <span>Dashboard</span>
@@ -166,9 +130,21 @@ const Dashboard = () => {
               <Users className="h-4 w-4" />
               <span>Patients</span>
             </TabsTrigger>
+            <TabsTrigger value="doctors" className="flex items-center space-x-2">
+              <Stethoscope className="h-4 w-4" />
+              <span>Doctors</span>
+            </TabsTrigger>
             <TabsTrigger value="reminders" className="flex items-center space-x-2">
               <Bell className="h-4 w-4" />
               <span>Reminders</span>
+            </TabsTrigger>
+            <TabsTrigger value="feedback" className="flex items-center space-x-2">
+              <MessageSquare className="h-4 w-4" />
+              <span>Feedback</span>
+            </TabsTrigger>
+            <TabsTrigger value="attendance" className="flex items-center space-x-2">
+              <CheckCircle className="h-4 w-4" />
+              <span>Attendance</span>
             </TabsTrigger>
             <TabsTrigger value="analytics" className="flex items-center space-x-2">
               <BarChart3 className="h-4 w-4" />
@@ -187,8 +163,20 @@ const Dashboard = () => {
             <PatientManagement />
           </TabsContent>
 
+          <TabsContent value="doctors" className="space-y-6">
+            <DoctorManagement />
+          </TabsContent>
+
           <TabsContent value="reminders" className="space-y-6">
             <ReminderScheduler />
+          </TabsContent>
+
+          <TabsContent value="feedback" className="space-y-6">
+            <FeedbackManagement />
+          </TabsContent>
+
+          <TabsContent value="attendance" className="space-y-6">
+            <AttendanceTracking />
           </TabsContent>
 
           <TabsContent value="analytics" className="space-y-6">

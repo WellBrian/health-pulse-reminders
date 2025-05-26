@@ -3,10 +3,12 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useTheme } from "@/contexts/ThemeContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { CalendarIcon, Bell, ArrowRight } from "lucide-react";
+import { CalendarIcon, Bell, ArrowRight, Calendar as CalendarPickerIcon } from "lucide-react";
 import { format } from "date-fns";
 import QuickActions from "@/components/actions/QuickActions";
 import SystemStatus from "@/components/system/SystemStatus";
@@ -44,14 +46,15 @@ const DashboardOverview = ({ onViewCalendar, onViewReminders }: DashboardOvervie
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
-  const fetchTodayAppointments = async () => {
+  const fetchAppointments = async (date: Date) => {
     try {
-      const today = new Date();
-      const startOfDay = new Date(today);
+      const startOfDay = new Date(date);
       startOfDay.setHours(0, 0, 0, 0);
       
-      const endOfDay = new Date(today);
+      const endOfDay = new Date(date);
       endOfDay.setHours(23, 59, 59, 999);
 
       const { data, error } = await supabase
@@ -112,7 +115,7 @@ const DashboardOverview = ({ onViewCalendar, onViewReminders }: DashboardOvervie
     const fetchData = async () => {
       setLoading(true);
       await Promise.all([
-        fetchTodayAppointments(),
+        fetchAppointments(selectedDate),
         fetchRecentReminders()
       ]);
       setLoading(false);
@@ -121,7 +124,7 @@ const DashboardOverview = ({ onViewCalendar, onViewReminders }: DashboardOvervie
     if (user) {
       fetchData();
     }
-  }, [user]);
+  }, [user, selectedDate]);
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
@@ -159,16 +162,48 @@ const DashboardOverview = ({ onViewCalendar, onViewReminders }: DashboardOvervie
     }
   };
 
+  const isToday = (date: Date) => {
+    const today = new Date();
+    return date.toDateString() === today.toDateString();
+  };
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {/* Today's Appointments */}
+      {/* Appointments with Date Picker */}
       <Card className={`${currentTheme.colors.background} backdrop-blur-sm border-gray-200`}>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <div>
-            <CardTitle className="text-xl font-semibold">Today's Appointments</CardTitle>
-            <CardDescription>Manage your schedule for today</CardDescription>
+            <CardTitle className="text-xl font-semibold">
+              {isToday(selectedDate) ? "Today's Appointments" : "Appointments"}
+            </CardTitle>
+            <CardDescription>
+              {format(selectedDate, 'MMMM d, yyyy')}
+            </CardDescription>
           </div>
-          <CalendarIcon className="h-6 w-6 text-blue-600" />
+          <div className="flex items-center gap-2">
+            <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <CalendarPickerIcon className="h-4 w-4 mr-2" />
+                  {isToday(selectedDate) ? "Today" : format(selectedDate, 'MMM d')}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={(date) => {
+                    if (date) {
+                      setSelectedDate(date);
+                      setIsCalendarOpen(false);
+                    }
+                  }}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+            <CalendarIcon className="h-6 w-6 text-blue-600" />
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           {loading ? (
@@ -179,7 +214,7 @@ const DashboardOverview = ({ onViewCalendar, onViewReminders }: DashboardOvervie
           ) : appointments.length === 0 ? (
             <div className="text-center py-6 text-gray-500">
               <CalendarIcon className="mx-auto h-8 w-8 text-gray-400 mb-2" />
-              <p>No appointments scheduled for today</p>
+              <p>No appointments scheduled for {isToday(selectedDate) ? "today" : "this date"}</p>
             </div>
           ) : (
             appointments.map((appointment) => (
