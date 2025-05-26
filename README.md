@@ -154,7 +154,7 @@ Start transforming your healthcare operations today:
 
 - 📱 Phone: +1 (555) 123-4567
 
-- 🌐 Website: www.medicaldashboard.com
+- 🌐 Website: [www.medicaldashboard.com](https://preview--health-pulse-reminders.lovable.app/)
 
 ## Contributors
 - [Brian Ouko](https://github.com/WellBrian)
