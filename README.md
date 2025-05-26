@@ -155,3 +155,8 @@ Start transforming your healthcare operations today:
 - 📱 Phone: +1 (555) 123-4567
 
 - 🌐 Website: www.medicaldashboard.com
+
+## Contributors
+- [Brian Ouko](https://github.com/WellBrian)
+- [Mmabatho Naseba](https://github.com/Mmabatho)
+- [Moses](https://github.com/RespectAi)
