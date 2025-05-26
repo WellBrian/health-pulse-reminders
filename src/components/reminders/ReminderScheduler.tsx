@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,8 +8,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Bell, Calendar, Users, Send, Clock, MessageSquare } from "lucide-react";
+import { Bell, Calendar, Users, Send, Clock, MessageSquare, Settings } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import AutomatedReminders from "./AutomatedReminders";
 
 const ReminderScheduler = () => {
   const [selectedTemplate, setSelectedTemplate] = useState("");
@@ -85,8 +85,9 @@ const ReminderScheduler = () => {
       </div>
 
       <Tabs defaultValue="schedule" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3 bg-white/70 backdrop-blur-sm">
+        <TabsList className="grid w-full grid-cols-4 bg-white/70 backdrop-blur-sm">
           <TabsTrigger value="schedule">Schedule Reminders</TabsTrigger>
+          <TabsTrigger value="automation">Automation</TabsTrigger>
           <TabsTrigger value="templates">Message Templates</TabsTrigger>
           <TabsTrigger value="upcoming">Upcoming Appointments</TabsTrigger>
         </TabsList>
@@ -207,6 +208,10 @@ const ReminderScheduler = () => {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="automation" className="space-y-4">
+          <AutomatedReminders />
         </TabsContent>
 
         <TabsContent value="templates" className="space-y-4">

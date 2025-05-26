@@ -7,10 +7,12 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Users, Search, Plus, UserCheck, Mail, Phone } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Users, Search, Plus, UserCheck, Mail, Phone, Calendar } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import DoctorAssignment from "./DoctorAssignment";
 
 interface Doctor {
   id: string;
@@ -278,81 +280,100 @@ const DoctorManagement = () => {
         </Dialog>
       </div>
 
-      <Card className="bg-white/80 backdrop-blur-sm border-gray-200">
-        <CardContent className="p-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-            <Input
-              placeholder="Search doctors by name, email, specialization, or clinic..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-        </CardContent>
-      </Card>
+      <Tabs defaultValue="list" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-2 bg-white/70 backdrop-blur-sm">
+          <TabsTrigger value="list" className="flex items-center space-x-2">
+            <Users className="h-4 w-4" />
+            <span>Doctor List</span>
+          </TabsTrigger>
+          <TabsTrigger value="assignments" className="flex items-center space-x-2">
+            <Calendar className="h-4 w-4" />
+            <span>Assignments</span>
+          </TabsTrigger>
+        </TabsList>
 
-      <div className="grid gap-4">
-        {filteredDoctors.map((doctor) => (
-          <Card key={doctor.id} className="bg-white/80 backdrop-blur-sm border-gray-200 hover:shadow-lg transition-shadow">
-            <CardContent className="p-6">
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <h3 className="text-lg font-semibold text-gray-900">{doctor.name}</h3>
-                    {doctor.specialization && (
-                      <Badge className="bg-blue-100 text-blue-800">
-                        {doctor.specialization}
-                      </Badge>
-                    )}
-                    {doctor.clinics?.name && (
-                      <Badge variant="outline" className="bg-green-50 text-green-700">
-                        {doctor.clinics.name}
-                      </Badge>
-                    )}
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-600">
-                    <p className="flex items-center gap-1">
-                      <Mail className="h-4 w-4" />
-                      {doctor.email}
-                    </p>
-                    {doctor.phone && (
-                      <p className="flex items-center gap-1">
-                        <Phone className="h-4 w-4" />
-                        {doctor.phone}
-                      </p>
-                    )}
-                    <p>📅 Added: {formatDate(doctor.created_at)}</p>
-                  </div>
-                </div>
-                
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm">
-                    <UserCheck className="mr-2 h-4 w-4" />
-                    View Schedule
-                  </Button>
-                  <Button variant="outline" size="sm">
-                    Edit
-                  </Button>
-                </div>
+        <TabsContent value="list" className="space-y-6">
+          <Card className="bg-white/80 backdrop-blur-sm border-gray-200">
+            <CardContent className="p-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Input
+                  placeholder="Search doctors by name, email, specialization, or clinic..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
               </div>
             </CardContent>
           </Card>
-        ))}
-      </div>
 
-      {filteredDoctors.length === 0 && !loading && (
-        <Card className="bg-white/80 backdrop-blur-sm border-gray-200">
-          <CardContent className="p-8 text-center">
-            <Users className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No doctors found</h3>
-            <p className="text-gray-600">
-              {searchTerm ? "Try adjusting your search terms" : "Add your first doctor to get started"}
-            </p>
-          </CardContent>
-        </Card>
-      )}
+          <div className="grid gap-4">
+            {filteredDoctors.map((doctor) => (
+              <Card key={doctor.id} className="bg-white/80 backdrop-blur-sm border-gray-200 hover:shadow-lg transition-shadow">
+                <CardContent className="p-6">
+                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="text-lg font-semibold text-gray-900">{doctor.name}</h3>
+                        {doctor.specialization && (
+                          <Badge className="bg-blue-100 text-blue-800">
+                            {doctor.specialization}
+                          </Badge>
+                        )}
+                        {doctor.clinics?.name && (
+                          <Badge variant="outline" className="bg-green-50 text-green-700">
+                            {doctor.clinics.name}
+                          </Badge>
+                        )}
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-600">
+                        <p className="flex items-center gap-1">
+                          <Mail className="h-4 w-4" />
+                          {doctor.email}
+                        </p>
+                        {doctor.phone && (
+                          <p className="flex items-center gap-1">
+                            <Phone className="h-4 w-4" />
+                            {doctor.phone}
+                          </p>
+                        )}
+                        <p>📅 Added: {formatDate(doctor.created_at)}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm">
+                        <UserCheck className="mr-2 h-4 w-4" />
+                        View Schedule
+                      </Button>
+                      <Button variant="outline" size="sm">
+                        Edit
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {filteredDoctors.length === 0 && !loading && (
+            <Card className="bg-white/80 backdrop-blur-sm border-gray-200">
+              <CardContent className="p-8 text-center">
+                <Users className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No doctors found</h3>
+                <p className="text-gray-600">
+                  {searchTerm ? "Try adjusting your search terms" : "Add your first doctor to get started"}
+                </p>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        <TabsContent value="assignments" className="space-y-6">
+          <DoctorAssignment />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

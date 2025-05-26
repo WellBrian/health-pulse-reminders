@@ -1,39 +1,176 @@
 
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { BarChart3, TrendingUp, MessageCircle, Clock, CheckCircle, XCircle } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+
+interface AnalyticsData {
+  totalReminders: number;
+  successRate: number;
+  avgResponseTime: string;
+  costSavings: string;
+}
+
+interface ReminderStat {
+  type: string;
+  sent: number;
+  delivered: number;
+  failed: number;
+  rate: number;
+}
+
+interface WeeklyData {
+  day: string;
+  reminders: number;
+  confirmations: number;
+}
+
+interface AppointmentMetric {
+  metric: string;
+  value: string;
+  change: string;
+  trend: "up" | "down";
+}
 
 const AnalyticsDashboard = () => {
-  const analyticsData = {
-    totalReminders: 1247,
-    successRate: 94.2,
-    avgResponseTime: "2.3 min",
-    costSavings: "$12,450"
+  const [analyticsData, setAnalyticsData] = useState<AnalyticsData>({
+    totalReminders: 0,
+    successRate: 0,
+    avgResponseTime: "0 min",
+    costSavings: "$0"
+  });
+  const [reminderStats, setReminderStats] = useState<ReminderStat[]>([]);
+  const [weeklyData, setWeeklyData] = useState<WeeklyData[]>([]);
+  const [appointmentMetrics, setAppointmentMetrics] = useState<AppointmentMetric[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+
+  useEffect(() => {
+    if (user) {
+      fetchAnalyticsData();
+    }
+  }, [user]);
+
+  const fetchAnalyticsData = async () => {
+    setLoading(true);
+    try {
+      // Fetch total reminders
+      const { data: reminders } = await supabase
+        .from('reminders')
+        .select('id, reminder_type, status, delivery_status, created_at');
+
+      // Fetch appointments for metrics
+      const { data: appointments } = await supabase
+        .from('appointments')
+        .select('id, status, attendance_status, created_at');
+
+      // Calculate analytics
+      const totalReminders = reminders?.length || 0;
+      const deliveredReminders = reminders?.filter(r => r.delivery_status === 'delivered' || r.status === 'sent').length || 0;
+      const successRate = totalReminders > 0 ? (deliveredReminders / totalReminders) * 100 : 0;
+
+      // Calculate reminder stats by type
+      const smsReminders = reminders?.filter(r => r.reminder_type === 'sms') || [];
+      const whatsappReminders = reminders?.filter(r => r.reminder_type === 'whatsapp') || [];
+      const emailReminders = reminders?.filter(r => r.reminder_type === 'email') || [];
+
+      const reminderStatistics: ReminderStat[] = [
+        {
+          type: "SMS",
+          sent: smsReminders.length,
+          delivered: smsReminders.filter(r => r.delivery_status === 'delivered').length,
+          failed: smsReminders.filter(r => r.delivery_status === 'failed').length,
+          rate: smsReminders.length > 0 ? (smsReminders.filter(r => r.delivery_status === 'delivered').length / smsReminders.length) * 100 : 0
+        },
+        {
+          type: "WhatsApp",
+          sent: whatsappReminders.length,
+          delivered: whatsappReminders.filter(r => r.delivery_status === 'delivered').length,
+          failed: whatsappReminders.filter(r => r.delivery_status === 'failed').length,
+          rate: whatsappReminders.length > 0 ? (whatsappReminders.filter(r => r.delivery_status === 'delivered').length / whatsappReminders.length) * 100 : 0
+        },
+        {
+          type: "Email",
+          sent: emailReminders.length,
+          delivered: emailReminders.filter(r => r.delivery_status === 'delivered').length,
+          failed: emailReminders.filter(r => r.delivery_status === 'failed').length,
+          rate: emailReminders.length > 0 ? (emailReminders.filter(r => r.delivery_status === 'delivered').length / emailReminders.length) * 100 : 0
+        }
+      ];
+
+      // Calculate weekly data (last 7 days)
+      const weeklyStats: WeeklyData[] = [];
+      const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        const dayName = days[date.getDay()];
+        
+        const dayReminders = reminders?.filter(r => {
+          const reminderDate = new Date(r.created_at);
+          return reminderDate.toDateString() === date.toDateString();
+        }).length || 0;
+
+        const dayConfirmations = appointments?.filter(a => {
+          const appointmentDate = new Date(a.created_at);
+          return appointmentDate.toDateString() === date.toDateString() && a.status === 'confirmed';
+        }).length || 0;
+
+        weeklyStats.push({
+          day: dayName,
+          reminders: dayReminders,
+          confirmations: dayConfirmations
+        });
+      }
+
+      // Calculate appointment metrics
+      const totalAppointments = appointments?.length || 0;
+      const completedAppointments = appointments?.filter(a => a.attendance_status === 'completed').length || 0;
+      const noShowAppointments = appointments?.filter(a => a.attendance_status === 'no_show').length || 0;
+      const confirmedAppointments = appointments?.filter(a => a.status === 'confirmed').length || 0;
+
+      const noShowRate = totalAppointments > 0 ? (noShowAppointments / totalAppointments) * 100 : 0;
+      const confirmationRate = totalAppointments > 0 ? (confirmedAppointments / totalAppointments) * 100 : 0;
+      const avgResponseTime = "2.3 min"; // This would need actual timing data
+      const patientSatisfaction = "4.7/5"; // This would come from feedback table
+
+      const metrics: AppointmentMetric[] = [
+        { metric: "No-show Rate", value: `${noShowRate.toFixed(1)}%`, change: "-2.1%", trend: "down" },
+        { metric: "Confirmation Rate", value: `${confirmationRate.toFixed(1)}%`, change: "+4.3%", trend: "up" },
+        { metric: "Response Time", value: avgResponseTime, change: "-0.5 min", trend: "down" },
+        { metric: "Patient Satisfaction", value: patientSatisfaction, change: "+0.2", trend: "up" },
+      ];
+
+      setAnalyticsData({
+        totalReminders,
+        successRate: Math.round(successRate * 10) / 10,
+        avgResponseTime: "2.3 min",
+        costSavings: `$${Math.round(totalReminders * 0.75)}`
+      });
+
+      setReminderStats(reminderStatistics);
+      setWeeklyData(weeklyStats);
+      setAppointmentMetrics(metrics);
+
+    } catch (error) {
+      console.error('Error fetching analytics data:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const reminderStats = [
-    { type: "SMS", sent: 456, delivered: 445, failed: 11, rate: 97.6 },
-    { type: "WhatsApp", sent: 328, delivered: 315, failed: 13, rate: 96.0 },
-    { type: "Email", sent: 463, delivered: 421, failed: 42, rate: 90.9 },
-  ];
-
-  const weeklyData = [
-    { day: "Mon", reminders: 45, confirmations: 41 },
-    { day: "Tue", reminders: 52, confirmations: 48 },
-    { day: "Wed", reminders: 38, confirmations: 35 },
-    { day: "Thu", reminders: 61, confirmations: 57 },
-    { day: "Fri", reminders: 48, confirmations: 44 },
-    { day: "Sat", reminders: 23, confirmations: 21 },
-    { day: "Sun", reminders: 15, confirmations: 14 },
-  ];
-
-  const appointmentMetrics = [
-    { metric: "No-show Rate", value: "8.2%", change: "-2.1%", trend: "down" },
-    { metric: "Confirmation Rate", value: "91.5%", change: "+4.3%", trend: "up" },
-    { metric: "Response Time", value: "2.3 min", change: "-0.5 min", trend: "down" },
-    { metric: "Patient Satisfaction", value: "4.7/5", change: "+0.2", trend: "up" },
-  ];
+  if (loading) {
+    return (
+      <div className="text-center py-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+        <p className="mt-2 text-gray-600">Loading analytics...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -101,7 +238,7 @@ const AnalyticsDashboard = () => {
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-gray-900">{stat.type}</span>
                   <Badge variant="outline" className="bg-green-50 text-green-700">
-                    {stat.rate}%
+                    {stat.rate.toFixed(1)}%
                   </Badge>
                 </div>
                 <Progress value={stat.rate} className="h-2" />
@@ -123,31 +260,34 @@ const AnalyticsDashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {weeklyData.map((day) => (
-                <div key={day.day} className="flex items-center justify-between">
-                  <span className="font-medium text-gray-900 w-12">{day.day}</span>
-                  <div className="flex-1 mx-4">
-                    <div className="flex items-center space-x-2">
-                      <div className="flex-1 bg-blue-100 rounded-full h-2 relative">
-                        <div 
-                          className="bg-blue-600 h-2 rounded-full" 
-                          style={{ width: `${(day.reminders / 70) * 100}%` }}
-                        ></div>
-                      </div>
-                      <div className="flex-1 bg-green-100 rounded-full h-2 relative">
-                        <div 
-                          className="bg-green-600 h-2 rounded-full" 
-                          style={{ width: `${(day.confirmations / 70) * 100}%` }}
-                        ></div>
+              {weeklyData.map((day) => {
+                const maxValue = Math.max(...weeklyData.map(d => Math.max(d.reminders, d.confirmations))) || 1;
+                return (
+                  <div key={day.day} className="flex items-center justify-between">
+                    <span className="font-medium text-gray-900 w-12">{day.day}</span>
+                    <div className="flex-1 mx-4">
+                      <div className="flex items-center space-x-2">
+                        <div className="flex-1 bg-blue-100 rounded-full h-2 relative">
+                          <div 
+                            className="bg-blue-600 h-2 rounded-full" 
+                            style={{ width: `${(day.reminders / maxValue) * 100}%` }}
+                          ></div>
+                        </div>
+                        <div className="flex-1 bg-green-100 rounded-full h-2 relative">
+                          <div 
+                            className="bg-green-600 h-2 rounded-full" 
+                            style={{ width: `${(day.confirmations / maxValue) * 100}%` }}
+                          ></div>
+                        </div>
                       </div>
                     </div>
+                    <div className="text-sm text-gray-600 text-right">
+                      <div>📤 {day.reminders}</div>
+                      <div>✅ {day.confirmations}</div>
+                    </div>
                   </div>
-                  <div className="text-sm text-gray-600 text-right">
-                    <div>📤 {day.reminders}</div>
-                    <div>✅ {day.confirmations}</div>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
             <div className="mt-4 flex items-center justify-center space-x-6 text-sm">
               <div className="flex items-center">
@@ -190,36 +330,6 @@ const AnalyticsDashboard = () => {
           </CardContent>
         </Card>
       </div>
-
-      {/* Recent Activity */}
-      <Card className="bg-white/80 backdrop-blur-sm border-gray-200">
-        <CardHeader>
-          <CardTitle>Recent Activity</CardTitle>
-          <CardDescription>Latest reminder activity and patient responses</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {[
-              { time: "2 min ago", action: "SMS reminder sent to Sarah Johnson", status: "delivered" },
-              { time: "5 min ago", action: "WhatsApp confirmation from Michael Chen", status: "confirmed" },
-              { time: "12 min ago", action: "Email reminder failed for Emily Davis", status: "failed" },
-              { time: "18 min ago", action: "SMS reminder sent to Robert Wilson", status: "delivered" },
-              { time: "25 min ago", action: "Appointment confirmed by Alice Brown", status: "confirmed" },
-            ].map((activity, index) => (
-              <div key={index} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
-                <div className="flex items-center space-x-3">
-                  <div className={`w-2 h-2 rounded-full ${
-                    activity.status === "delivered" ? "bg-blue-400" :
-                    activity.status === "confirmed" ? "bg-green-400" : "bg-red-400"
-                  }`}></div>
-                  <span className="text-sm text-gray-900">{activity.action}</span>
-                </div>
-                <span className="text-xs text-gray-500">{activity.time}</span>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 };
